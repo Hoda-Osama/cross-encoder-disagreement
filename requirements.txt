@@ -1,0 +1,10 @@
+torch>=2.1
+torchvision>=0.16
+transformers>=4.40
+numpy>=1.24
+scipy>=1.10
+pandas>=2.0
+opencv-python>=4.8
+decord>=0.6.0        # optional but much faster than opencv for decoding
+timm>=0.9            # required by some depth model hubs
+scikit-learn>=1.3   # linear probe baseline only; nothing else needs it

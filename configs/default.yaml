@@ -1,0 +1,78 @@
+seed: 42
+
+video:
+  num_frames: 32          # not 16: CKA and neighbourhood agreement operate on
+                          # the T x T frame-similarity structure. At T=16 there
+                          # are 120 unique off-diagonal pairs for the rank
+                          # correlation; at T=32 there are 496.
+  decode_size: 384        # depth encoders want 384; appearance encoders
+                          # downsample from it. Decoding at 224 and upsampling
+                          # for depth would degrade the stream under question.
+  sampling: uniform
+
+  # Short-clip policy. Videos with fewer than num_frames are extended by
+  # CYCLIC REPETITION, never dropped.
+  #
+  # A minimum-length filter would be a silent data exclusion: clip length
+  # plausibly correlates with generator, so filtering on it conditions the
+  # sample on something related to the label. Repetition also preserves
+  # motion continuity, which matters for VideoMAE and RAFT.
+  #
+  # If you ever do exclude videos, report how many and from which generators.
+  short_clip_policy: cyclic_repeat
+  min_frames: null        # deliberately null -- see above
+
+  # Frames are never re-encoded lossily anywhere in the pipeline. In a study
+  # of compression-sensitive artifacts, caching frames as JPEG would
+  # contaminate the measurement. --cache-frames writes lossless .npy.
+  jpeg_cache: false
+
+features:
+  dtype_storage: float16  # ~150 KB per video across the whole encoder grid
+  dtype_analysis: float64 # CKA takes Frobenius norms of Gram matrices and the
+                          # ridge map is a linear solve. Neither is safe in fp16.
+
+analysis:
+  primary:   [cka, cknna, nbr]
+  secondary: [ridge]
+  controls:  [randproj, norm, second_order, curvature]
+  never_report: [lstsq_degenerate]   # quarantined, not deleted; see measures.yaml
+
+ridge:
+  calibration: real_only  # fake labels never enter calibration
+  alpha: 1.0
+  n_fit_videos: 150       # held out from scoring
+  direction: a_to_b
+
+cknna:
+  k: 4                    # mutual k-NN mask; ~T_c/4
+
+neighbourhood:
+  similarity: cosine
+  statistic: spearman
+  # Upper triangle only (k=1). Masking with ~eye takes BOTH triangles of a
+  # symmetric matrix, which leaves rho unchanged but doubles the effective n
+  # and makes any p-value computed from it wrong.
+
+statistics:
+  effect_size: cohens_d
+  confidence_level: 0.95
+  bootstrap_iterations: 2000
+  auroc: true
+  report_below_half: true   # do not fold AUROC < 0.5 to 1 - AUROC; a measure
+                            # that is LOWER for generated video is still
+                            # informative, and silently flipping it would hide
+                            # sign disagreement between encoder pairs.
+
+compute:
+  device: cuda
+  batch_size: 1
+  frame_chunk: 4          # depth models at 384; 8 GB safe
+  mixed_precision: true
+  all_encoders_resident: true
+
+output:
+  feature_dir: cache/features
+  result_dir: results
+  log_dir: logs
+  resume: true

@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+cache/
+results/
+*.npz
+*.npy
+*.pt
+*.pth
+*.mp4
+.ipynb_checkpoints/

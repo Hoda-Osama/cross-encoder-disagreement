@@ -1,0 +1,122 @@
+# Measures.
+#
+# `status` is load-bearing. Only measures marked `primary` or `directional`
+# belong in the headline table. `control` rows go in the same table as
+# controls. `degenerate` must never be reported as a result.
+
+measures:
+  - key: cka
+    status: primary
+    unit: between-encoder
+    needs_fit: false
+    range: [0, 1]
+    label: Centred kernel alignment
+    desc: 1 - linear CKA between the two representation spaces
+
+  - key: nbr
+    status: primary
+    unit: between-encoder
+    needs_fit: false
+    range: [0, 2]
+    label: Neighbourhood agreement
+    desc: 1 - Spearman rho between the two frame-similarity structures
+
+  - key: cknna
+    status: primary
+    unit: between-encoder
+    needs_fit: false
+    range: [0, 1]
+    label: Neighbourhood alignment (CKNNA)
+    desc: >
+      Mutual k-nearest-neighbour masked CKA -- the measure Huh et al. (2024)
+      use to evaluate the Platonic Representation Hypothesis. Included so the
+      paper uses the tool that the hypothesis it tests was evaluated with.
+      CAUTION: neighbourhood metrics are sensitive to hubness at small n.
+      Report alongside cka, not instead of it, and check they agree.
+
+  - key: ridge
+    status: directional
+    unit: between-encoder
+    needs_fit: global_on_real
+    label: Ridge predictability
+    desc: >
+      Residual under one ridge map calibrated on real video only, held out
+      from scoring. This is the well-posed replacement for a per-video
+      least-squares fit, which is degenerate whenever T < d.
+
+  - key: randproj
+    status: control
+    unit: between-encoder
+    needs_fit: false
+    label: Random projection
+    desc: >
+      Specificity control. Tests whether the learned projections and
+      attention in Paper 1 are necessary, NOT whether pretraining is
+      necessary -- random projections of CLIP features still carry all of
+      CLIP's pretraining. The control for pretraining would be a randomly
+      initialised encoder.
+
+  - key: norm
+    status: control
+    unit: within-encoder
+    needs_fit: false
+    label: Feature-norm variation
+    desc: Trivial single-encoder baseline; answers "could one encoder do this?"
+
+  - key: lstsq_degenerate
+    status: degenerate
+    unit: between-encoder
+    needs_fit: per_video
+    label: Per-video least squares
+    desc: >
+      Returns ~0 for every video whenever T < d1. Retained only so the
+      Methods section can demonstrate the degeneracy. DO NOT REPORT.
+
+# Within-encoder comparison baselines.  These are the fair same-regime
+# comparison: published, training-free, statistic-based.
+baselines:
+  - key: d3
+    unit: within-encoder
+    ref: "Zheng et al., ICCV 2025"
+    implemented: false
+  - key: restrav
+    unit: within-encoder
+    ref: "Interno et al., NeurIPS 2025"
+    implemented: false
+
+# Experiment definitions.
+experiments:
+  pilot:
+    pairs: [[clip_b32, midas_hybrid]]
+    measures: [cka, nbr, randproj, norm]
+    limit: 400
+    gate:
+      positive: 0.40
+      partial: 0.15
+
+  main:
+    pairs: cross_role
+    measures: [cka, nbr, ridge, randproj, norm]
+    controls: same_role
+
+  intervention:
+    pairs: [[clip_b32, midas_hybrid], [clip_b32, videomae_b]]
+    measures: [cka, nbr]
+    n: 400
+
+  generators:
+    group_by: generator
+    measures: [cka, nbr, ridge]
+
+  compression:
+    crf: [18, 23, 28, 32]
+    measures: [cka, nbr, ridge]
+
+# Research questions, kept here so the analysis outputs can be mapped
+# directly onto the paper.
+research_questions:
+  RQ1: Does cross-encoder disagreement distinguish real from generated video without training a detector?
+  RQ2: Is the effect specific to particular encoder pairings or shared across heterogeneous representation spaces?
+  RQ3: Does it reflect correspondence between representations rather than independent encoder statistics?
+  RQ4: Does the phenomenon persist across generators and under compression?
+  RQ5: Does between-encoder disagreement provide information beyond established within-encoder statistics?

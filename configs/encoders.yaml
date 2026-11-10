@@ -1,0 +1,52 @@
+# Encoder grid.
+#
+# Each role holds one encoder inherited from Paper 1 and at least one
+# independent alternative. That structure is what lets the paper ask whether
+# a result depends on the specific encoder rather than on the role.
+#
+# `paper1: true` tags the inherited encoders so the analysis can report the
+# Paper 1 triple separately from the alternatives.
+
+appearance:
+  - key: clip_b32
+    hf: openai/clip-vit-base-patch32
+    dim: 512
+    paper1: true
+    note: image-text contrastive
+  - key: dinov2_b14
+    hf: facebook/dinov2-base
+    dim: 768
+    paper1: false
+    note: self-supervised, no language supervision
+
+motion:
+  - key: videomae_b
+    hf: MCG-NJU/videomae-base
+    dim: 768
+    paper1: true
+    note: masked spatiotemporal reconstruction
+  - key: raft_small
+    hf: torchvision/raft_small
+    dim: 64
+    paper1: false
+    note: optical flow; no semantic pretraining objective at all
+  # V-JEPA deliberately omitted: ViT-L over 16 frames does not fit
+  # comfortably on an 8 GB card alongside the rest of the grid.
+
+geometry:
+  - key: midas_hybrid
+    hf: intel-isl/MiDaS:DPT_Hybrid
+    dim: 80
+    paper1: true
+    note: relative depth
+  - key: dav2_base
+    hf: depth-anything/Depth-Anything-V2-Base-hf
+    dim: 80
+    paper1: false
+    note: relative depth, four years newer
+  - key: unidepth_l
+    hf: lpiccinelli/unidepth-v2-vitl14
+    dim: 80
+    paper1: false
+    optional: true
+    note: metric depth; answers the relative-vs-metric question Chang et al. raise
